@@ -6,11 +6,12 @@ SignPath Foundation's published terms require an OSI-approved open-source licens
 
 Current gaps:
 
-- The source tree has not been published to a public GitHub or GitLab repository.
-- There is no public project homepage or public release download URL.
+- Source is public at https://github.com/eliseiromanuk229-ai/x-browser.
+- The project homepage is live at https://eliseiromanuk229-ai.github.io/x-browser/. There is still no public desktop release download.
 - The project has no public usage history or third-party reputation evidence yet; this must be earned, not invented.
-- No automated public build workflow or SignPath account is configured.
+- A public Windows build workflow exists. No SignPath account or signing workflow is configured.
 - The policy page correctly says the current executable is unsigned and is not a SignPath release. Replace it only after written acceptance and configuration.
 - The account contact identity, maintainer roles, and MFA setup must be supplied by the real project maintainer.
 
 Do not submit claims of usage, press coverage, signatures, or organization ownership that cannot be independently verified. Revisit the application after public releases and community use establish evidence.
+
