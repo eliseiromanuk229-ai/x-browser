@@ -1,0 +1,38 @@
+name: Build Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-windows.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund
+      - name: Package Windows app
+        working-directory: app
+        run: npm run package
+      - name: Upload unsigned build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-browser-windows-x64-unsigned
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
