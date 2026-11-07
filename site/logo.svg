@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="X Browser globe logo">
+  <rect width="256" height="256" rx="58" fill="#050608"/>
+  <circle cx="128" cy="128" r="99" fill="none" stroke="#f7f8fb" stroke-width="8"/>
+  <path d="M45 95c18-13 37-18 55-15l16 14-15 13-8 19-22 6-13-12-19 2M69 162l19-10 9-20 19 1 13 18-8 13 8 26-13 27M141 31l-4 20 15 14-6 18 16 12 27-3 24 12M177 139l-24 3-10 15 4 23 20 6 18 17M202 82l-16 17 8 21 21 3" fill="#f7f8fb" stroke="#f7f8fb" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M72 63 180 193M180 63 72 193" fill="none" stroke="#050608" stroke-width="38" stroke-linecap="square"/>
+  <path d="M72 63 180 193M180 63 72 193" fill="none" stroke="#f7f8fb" stroke-width="22" stroke-linecap="square"/>
+</svg>

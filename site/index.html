@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08090b">
+  <meta name="description" content="X Browser — браузер для Windows с тёмным оформлением, вкладками, быстрыми ссылками и настраиваемой панелью адреса.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="X Browser — браузер в твоём стиле">
+  <meta property="og:description" content="Тёмный интерфейс, быстрые ссылки и удобные вкладки. Открытый проект на Electron и Chromium.">
+  <meta property="og:image" content="logo.svg">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="canonical" href="https://eliseiromanuk229-ai.github.io/x-browser/">
+  <title>X Browser — браузер в твоём стиле</title>
+  <meta property="og:url" content="https://eliseiromanuk229-ai.github.io/x-browser/">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"X Browser","url":"https://eliseiromanuk229-ai.github.io/x-browser/","applicationCategory":"BrowserApplication","operatingSystem":"Windows","description":"A customizable Windows browser shell with a dark interface, tabs, quick links, and configurable toolbar placement."}
+  </script>
+  <style>
+    :root{color-scheme:dark;--bg:#08090b;--panel:#111318;--line:#ffffff18;--text:#f4f5fa;--muted:#a6a8b3;--accent:#c5c9ff;--max:1120px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse 55% 38% at 50% 0,#b8bcff14,transparent 76%),var(--bg);color:var(--text);font:16px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}a{color:inherit}.wrap{width:min(var(--max),calc(100% - 40px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px;text-decoration:none;font-size:17px;font-weight:650;letter-spacing:-.4px}.brand img{width:36px;height:36px}.nav{display:flex;gap:24px;color:#d3d4dd;font-size:14px}.nav a{text-decoration:none}.nav a:hover{color:#fff}.hero{max-width:800px;margin:clamp(75px,12vw,150px) auto 82px;text-align:center}.hero img{width:96px;height:96px;filter:drop-shadow(0 0 44px #bbc0ff55)}.eyebrow{color:#c5c9ff;text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:650;margin:22px 0 10px}.hero h1{margin:0;font-size:clamp(38px,8vw,76px);line-height:1.02;letter-spacing:-.065em}.hero p{max-width:620px;margin:22px auto 0;color:var(--muted);font-size:clamp(16px,2vw,19px)}.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}.button{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:12px 18px;border:1px solid #ffffff24;border-radius:13px;background:#ffffff0a;text-decoration:none;font-weight:600;font-size:14px}.button.primary{background:#eceeff;color:#17181d;border-color:#eceeff}.button:hover{transform:translateY(-1px);border-color:#c5c9ff88}.note{font-size:12px!important;margin-top:16px!important}.features{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto 100px}.card{padding:23px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(150deg,#ffffff0c,#ffffff03)}.card .icon{font-size:20px}.card h2{font-size:16px;margin:10px 0 6px}.card p{margin:0;color:var(--muted);font-size:14px}.about{border-top:1px solid var(--line);padding:36px 0 68px;color:var(--muted);font-size:13px}.about h2{color:var(--text);font-size:18px}.footer{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;border-top:1px solid var(--line);padding:20px 0 36px;color:#888b97;font-size:12px}.footer a{text-decoration:none}.status{display:inline-flex;align-items:center;gap:7px;color:#c8c9d4}.dot{width:7px;height:7px;border-radius:50%;background:#aeb4ff;box-shadow:0 0 12px #aeb4ff}
+    @media(max-width:700px){.wrap{width:min(100% - 28px,var(--max))}.nav{gap:12px;font-size:12px}.features{grid-template-columns:1fr;margin-bottom:65px}.hero{margin:75px auto 60px}.card{padding:18px}.top{padding:15px 0}.footer{font-size:11px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top"><a class="brand" href="./" aria-label="X Browser — главная"><img src="logo.svg" alt=""><span>X Browser</span></a><nav class="nav" aria-label="Основная навигация"><a href="#features">Возможности</a><a href="#about">О проекте</a></nav></header>
+    <main>
+      <section class="hero">
+        <img src="logo.svg" alt="Логотип X Browser: белая X поверх глобуса">
+        <div class="eyebrow">Твой браузер. Твои правила.</div>
+        <h1>Интернет в твоём стиле</h1>
+        <p>X Browser — открытая браузерная оболочка для Windows с тёмным оформлением, быстрыми ссылками и панелями, которые можно настроить под себя.</p>
+        <div class="actions"><a class="button primary" href="#download">Скачать для Windows</a><a class="button" href="#source">Исходный код</a></div>
+        <p class="note status"><span class="dot"></span>Ранняя версия · Windows · Исходники готовятся к публикации</p>
+      </section>
+      <section class="features" id="features" aria-label="Возможности">
+        <article class="card"><div class="icon" aria-hidden="true">◐</div><h2>Чёрная тема</h2><p>Тёмная стеклянная оболочка с мягкими бликами и спокойной контрастностью.</p></article>
+        <article class="card"><div class="icon" aria-hidden="true">▤</div><h2>Удобные вкладки</h2><p>Вкладки сверху или списком слева, а ещё быстрый обзор открытых страниц.</p></article>
+        <article class="card"><div class="icon" aria-hidden="true">↔</div><h2>Настраиваемая панель</h2><p>Размести панель адреса сверху или снизу, либо включи компактный режим.</p></article>
+      </section>
+      <section class="about" id="about"><h2>О проекте</h2><p>X Browser — независимый проект сообщества на Electron и Chromium. Веб-страницы открываются внутри приложения. История и закладки этой версии хранятся в профиле браузера на устройстве; посещаемые сайты получают только те запросы, которые пользователь сам открывает.</p><p>Проект пока находится на раннем этапе. Сборки для Android и iPhone, синхронизация аккаунтов и вход через сторонние сервисы ещё не готовы.</p><p id="source"><strong>Исходный код:</strong> появится здесь после публикации репозитория.</p><p id="download"><strong>Загрузка:</strong> публичный установочный файл появится после выпуска первого проверенного релиза.</p></section>
+    </main>
+    <footer class="footer"><span>© 2026 X Browser contributors</span><span><a href="privacy.html">Конфиденциальность</a> · <a href="code-signing-policy.html">Подпись кода</a></span></footer>
+  </div>
+</body>
+</html>
+

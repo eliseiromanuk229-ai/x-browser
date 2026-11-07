@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://eliseiromanuk229-ai.github.io/x-browser/sitemap.xml
