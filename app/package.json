@@ -1,13 +1,15 @@
 {
   "name": "x-browser",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "license": "MIT",
-  "description": "Customizable Windows browser shell built with Electron and Chromium",
+  "description": "Customizable desktop browser shell built with Electron and Chromium",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package": "electron-packager . \"X Browser\" --platform=win32 --arch=x64 --out=../release --overwrite --asar"
+    "package": "npm run package:windows",
+    "package:windows": "electron-packager . \"X Browser\" --platform=win32 --arch=x64 --out=../release --overwrite --asar",
+    "package:linux": "electron-packager . \"X Browser\" --platform=linux --arch=x64 --out=../release --overwrite --asar"
   },
   "devDependencies": {
     "electron": "45.2.3",

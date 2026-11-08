@@ -1,4 +1,4 @@
-name: Build Windows x64
+name: Build desktop packages
 
 on:
   workflow_dispatch:
@@ -17,7 +17,17 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runner: windows-latest
+            script: package:windows
+          - platform: linux
+            runner: ubuntu-latest
+            script: package:linux
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,13 +36,13 @@ jobs:
       - name: Install dependencies
         working-directory: app
         run: npm install --no-audit --no-fund
-      - name: Package Windows app
+      - name: Package desktop app
         working-directory: app
-        run: npm run package
+        run: npm run ${{ matrix.script }}
       - name: Upload unsigned build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: x-browser-windows-x64-unsigned
+          name: x-browser-${{ matrix.platform }}-x64-unsigned
           path: release/
           if-no-files-found: error
           retention-days: 7

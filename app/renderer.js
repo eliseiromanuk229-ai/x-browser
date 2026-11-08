@@ -1,6 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const quickSites = [
-  ["Google", "https://www.google.com", "G", "Поиск"],
+  ["Поиск X Browser", "", "⌕", "Интернет-поиск"],
   ["YouTube", "https://www.youtube.com", "▶", "Видео"],
   ["Gmail", "https://mail.google.com", "✉", "Почта"],
   ["Google Drive", "https://drive.google.com", "△", "Файлы"],
@@ -11,6 +11,7 @@ const quickSites = [
 let tabs = [];
 let activeId = "";
 let overviewOpen = false;
+let homeSearchMode = "web";
 let historyItems = JSON.parse(localStorage.getItem("xb-history") || "[]");
 let bookmarks = JSON.parse(localStorage.getItem("xb-bookmarks") || "[]");
 let preferences = {
@@ -30,6 +31,10 @@ function showToast(text) {
 
 function saveHistory() { localStorage.setItem("xb-history", JSON.stringify(historyItems)); }
 function persistBookmarks() { localStorage.setItem("xb-bookmarks", JSON.stringify(bookmarks)); }
+
+function displayTitle(title, url) {
+  return title || pageName(url);
+}
 
 function updateRecent() {
   $("#recent").textContent = historyItems.length
@@ -67,10 +72,14 @@ function renderTabs() {
     horizontal.append(makeTabButton(tab));
     vertical.append(makeTabButton(tab, true));
   }
+  try {
+    localStorage.setItem("xb-tabs-session", JSON.stringify(tabs.slice(-20).map(({ id, title, url, kind, query, searchMode }) => ({ id, title, url, kind, query, searchMode }))));
+    localStorage.setItem("xb-active-tab", activeId);
+  } catch { /* Keep browsing if local storage is unavailable. */ }
 }
 
 function createTab() {
-  const tab = { id: crypto.randomUUID(), title: "Новая вкладка", url: "", view: null };
+  const tab = { id: crypto.randomUUID(), title: "Новая вкладка", url: "", kind: "home", query: "", view: null };
   tabs.push(tab);
   activateTab(tab.id);
   return tab;
@@ -97,30 +106,56 @@ function activateTab(id) {
   const tab = tabs.find(item => item.id === id);
   if (!tab) return;
   activeId = id;
+  if (tab.kind === "web" && tab.url && !tab.view) createWebview(tab, tab.url);
   overviewOpen = false;
   $("#tabOverview").classList.remove("visible");
   $("#homeView").hidden = Boolean(tab.url);
+  $("#searchResultsView").hidden = tab.kind !== "search";
+  if (tab.kind === "search") {
+    updateSearchMode(tab);
+    if (tab.searchMode === "ai") loadAiOverview(tab);
+    else loadSearchResults(tab);
+  }
   for (const item of tabs) if (item.view) item.view.style.display = item.id === id && item.url ? "flex" : "none";
   $("#address").value = tab.url;
   renderTabs();
 }
 
-function createWebview(tab) {
+function createWebview(tab, initialUrl) {
   const view = document.createElement("webview");
   view.className = "page-view";
   view.setAttribute("partition", "persist:x-browser-pages");
   view.setAttribute("webpreferences", "contextIsolation=yes, nodeIntegration=no, sandbox=yes");
   view.setAttribute("allowpopups", "");
+  view.setAttribute("src", initialUrl);
   view.style.display = "none";
+  // A webview without an initial src does not create its guest contents, so
+  // loadURL() rejects and leaves a white about:blank surface. Set src before
+  // appending, then wait for the guest to attach before future API calls.
+  tab.viewReady = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Встроенная вкладка не запустилась.")), 15000);
+    view.addEventListener("did-attach", () => {
+      clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+    view.addEventListener("destroyed", () => {
+      clearTimeout(timeout);
+      reject(new Error("Вкладка была закрыта во время запуска."));
+    }, { once: true });
+  });
   view.addEventListener("did-navigate", event => onPageChanged(tab, event.url));
   view.addEventListener("did-navigate-in-page", event => onPageChanged(tab, event.url));
   view.addEventListener("page-title-updated", event => {
-    tab.title = event.title || pageName(tab.url);
+    tab.title = displayTitle(event.title, tab.url);
     renderTabs();
     renderOverview();
   });
-  view.addEventListener("did-start-loading", () => { if (tab.id === activeId) $("#busy").classList.add("on"); });
-  view.addEventListener("did-stop-loading", () => { if (tab.id === activeId) $("#busy").classList.remove("on"); });
+  view.addEventListener("did-start-loading", () => {
+    if (tab.id === activeId) { $("#busy").classList.add("on"); $("#busy").textContent = ""; }
+  });
+  view.addEventListener("did-stop-loading", () => {
+    if (tab.id === activeId) { $("#busy").classList.remove("on"); $("#busy").textContent = ""; }
+  });
   view.addEventListener("did-fail-load", event => {
     if (event.errorCode !== -3 && tab.id === activeId) showToast("Страница не загрузилась. Проверь адрес и интернет.");
   });
@@ -136,7 +171,8 @@ function pageName(value) {
 
 function onPageChanged(tab, url) {
   tab.url = url;
-  if (!tab.title || tab.title === "Новая вкладка") tab.title = pageName(url);
+  tab.kind = "web";
+  if (!tab.title || tab.title === "Новая вкладка") tab.title = displayTitle(pageName(url), url);
   historyItems = [{ url, title: tab.title, time: Date.now() }, ...historyItems.filter(item => item.url !== url)].slice(0, 30);
   saveHistory();
   updateRecent();
@@ -152,18 +188,168 @@ async function openAddress(value, targetTab = tabs.find(tab => tab.id === active
   const result = await window.xBrowser.resolveAddress(value);
   if (!result.ok) { showToast(result.error); return; }
   const tab = targetTab || createTab();
+  if (result.kind === "search") return openSearch(result.query, tab);
+  tab.kind = "web";
+  tab.query = "";
   tab.url = result.url;
   tab.title = pageName(result.url);
   if (tab.view) tab.view.style.display = "none";
-  const view = tab.view || createWebview(tab);
+  const isNewView = !tab.view;
+  const view = tab.view || createWebview(tab, result.url);
   activateTab(tab.id);
   $("#homeView").hidden = true;
   view.style.display = "flex";
   $("#address").value = result.url;
   $("#address").blur();
-  try { await view.loadURL(result.url); }
-  catch { if (tab.id === activeId) showToast("Не удалось открыть страницу. Проверь адрес и интернет."); }
+  try {
+    await tab.viewReady;
+    if (!isNewView) await view.loadURL(result.url);
+  } catch (error) {
+    if (tab.id === activeId) {
+      const detail = error?.message ? ` (${error.message})` : "";
+      showToast(`Не удалось открыть страницу${detail}`);
+    }
+  }
   renderTabs();
+}
+
+function openSearch(query, targetTab, mode = "web") {
+  const tab = targetTab || createTab();
+  destroyView(tab);
+  tab.kind = "search";
+  tab.query = query;
+  tab.url = `x-browser://search/?q=${encodeURIComponent(query)}`;
+  tab.title = `${query} · X Browser`;
+  tab.searchLoadedFor = "";
+  tab.searchLoading = false;
+  tab.searchMode = mode;
+  tab.aiLoadedFor = "";
+  tab.aiLoading = false;
+  activateTab(tab.id);
+  $("#address").value = query;
+  $("#address").blur();
+  renderTabs();
+}
+
+function updateSearchMode(tab) {
+  const isAi = tab.searchMode === "ai";
+  $("#resultsWebMode").classList.toggle("active", !isAi);
+  $("#resultsAiMode").classList.toggle("active", isAi);
+  $("#resultsCaption").textContent = isAi
+    ? "Краткий обзор X Browser по вашему запросу"
+    : "Результаты поиска X Browser";
+}
+
+function shouldShowAutomaticOverview(query) {
+  const value = query.trim().toLocaleLowerCase();
+  if (value.length < 9 || /^[\w.-]+\.[a-z]{2,}$/i.test(value)) return false;
+  const words = value.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const informationTerms = new Set(["что", "как", "почему", "когда", "кто", "где", "сколько", "зачем", "какой", "какая", "какие", "объясни", "расскажи", "сравни", "помоги", "погода", "новости", "события", "итоги", "причины", "история", "обзор", "цена", "курс", "результат", "столица", "значение", "определение", "what", "how", "why", "when", "who", "where", "explain", "compare", "guide", "news", "weather", "latest"]);
+  return value.includes("?") || words.some(word => informationTerms.has(word)) || words.length >= 5;
+}
+
+function addAutomaticOverview(tab, sources) {
+  if (!shouldShowAutomaticOverview(tab.query)) return;
+  const card = document.createElement("article"); card.className = "auto-ai-card";
+  const heading = document.createElement("div"); heading.className = "ai-meta";
+  const orb = document.createElement("span"); orb.className = "ai-orb"; orb.textContent = "✦";
+  const label = document.createElement("div"); label.innerHTML = "<strong>Краткий ИИ-обзор</strong><small>По найденным страницам</small>";
+  heading.append(orb, label);
+  const body = document.createElement("div"); body.className = "ai-answer";
+  body.innerHTML = '<span class="results-spinner"></span> <span>Сверяю вопрос с результатами поиска…</span>';
+  card.append(heading, body);
+  const firstResult = $("#searchResultsList .result-card");
+  firstResult ? firstResult.before(card) : $("#searchResultsList").prepend(card);
+  window.xBrowser.aiOverview(tab.query, sources.slice(0, 6)).then(response => {
+    if (!card.isConnected || tab.id !== activeId || tab.searchMode !== "web") return;
+    body.textContent = response.ok ? response.reply : "ИИ-обзор сейчас недоступен. Ниже остаются обычные результаты поиска.";
+  }).catch(() => {
+    if (card.isConnected) body.textContent = "ИИ-обзор сейчас недоступен. Ниже остаются обычные результаты поиска.";
+  });
+}
+
+async function loadSearchResults(tab) {
+  if (tab.searchMode === "ai") return;
+  const list = $("#searchResultsList");
+  $("#resultsQuery").textContent = tab.query;
+  if (tab.searchLoadedFor === tab.query || tab.searchLoading) return;
+  tab.searchLoading = true;
+  list.replaceChildren();
+  const loading = document.createElement("div");
+  loading.className = "results-state";
+  loading.innerHTML = '<span class="results-spinner"></span><strong>Ищем в интернете…</strong><small>Результаты оформлены X Browser</small>';
+  list.append(loading);
+  const response = await window.xBrowser.search(tab.query);
+  tab.searchLoading = false;
+  if (tab.id !== activeId || tab.kind !== "search" || tab.searchMode !== "web") return;
+  list.replaceChildren();
+  if (!response.ok) {
+    const state = document.createElement("div"); state.className = "results-state";
+    const title = document.createElement("strong"); title.textContent = response.error || "Не удалось загрузить результаты";
+    const fallback = document.createElement("button"); fallback.className = "results-fallback"; fallback.textContent = "Повторить поиск";
+    fallback.onclick = () => openSearch(tab.query, tab);
+    state.append(title, fallback); list.append(state); return;
+  }
+  const doc = new DOMParser().parseFromString(response.html, "text/html");
+  const rows = [...doc.querySelectorAll(".result")].map(row => {
+    const link = row.querySelector("a.result__a");
+    const raw = link?.getAttribute("href") || "";
+    let href = raw;
+    try {
+      const parsed = new URL(raw, "https://html.duckduckgo.com");
+      const redirect = parsed.searchParams.get("uddg");
+      href = redirect || parsed.href;
+    } catch { return null; }
+    if (!/^https?:/i.test(href)) return null;
+    return { href, title: link?.textContent?.trim(), snippet: row.querySelector(".result__snippet")?.textContent?.trim() || "" };
+  }).filter(item => item?.title && item.href).slice(0, 20);
+  if (!rows.length) {
+    const state = document.createElement("div"); state.className = "results-state";
+    const title = document.createElement("strong"); title.textContent = "Пока нет результатов для этого запроса.";
+    const fallback = document.createElement("button"); fallback.className = "results-fallback"; fallback.textContent = "Повторить поиск";
+    fallback.onclick = () => openSearch(tab.query, tab);
+    state.append(title, fallback); list.append(state); tab.searchLoadedFor = tab.query; return;
+  }
+  for (const item of rows) {
+    const card = document.createElement("article"); card.className = "result-card";
+    const host = document.createElement("div"); host.className = "result-host";
+    try { host.textContent = new URL(item.href).hostname.replace(/^www\./, ""); } catch { host.textContent = "Сайт"; }
+    const link = document.createElement("button"); link.className = "result-link"; link.textContent = item.title;
+    link.onclick = () => openAddress(item.href, tab);
+    const snippet = document.createElement("p"); snippet.textContent = item.snippet;
+    card.append(host, link, snippet); list.append(card);
+  }
+  addAutomaticOverview(tab, rows.map(item => ({ url: item.href, title: item.title, snippet: item.snippet })));
+  tab.searchLoadedFor = tab.query;
+}
+
+async function loadAiOverview(tab) {
+  if (tab.searchMode !== "ai" || tab.aiLoading || tab.aiLoadedFor === tab.query) return;
+  const list = $("#searchResultsList");
+  list.replaceChildren();
+  const loading = document.createElement("div"); loading.className = "results-state";
+  loading.innerHTML = '<span class="results-spinner"></span><strong>Готовим ИИ-обзор…</strong><small>Ответ формирует X.ai</small>';
+  list.append(loading);
+  tab.aiLoading = true;
+  const response = await window.xBrowser.aiOverview(tab.query);
+  tab.aiLoading = false;
+  if (tab.id !== activeId || tab.kind !== "search" || tab.searchMode !== "ai") return;
+  list.replaceChildren();
+  if (!response.ok) {
+    const state = document.createElement("div"); state.className = "results-state";
+    const title = document.createElement("strong"); title.textContent = response.error || "ИИ-обзор сейчас недоступен";
+    const retry = document.createElement("button"); retry.className = "results-fallback"; retry.textContent = "Повторить";
+    retry.onclick = () => { tab.aiLoadedFor = ""; loadAiOverview(tab); };
+    state.append(title, retry); list.append(state); return;
+  }
+  const meta = document.createElement("div"); meta.className = "ai-meta";
+  const orb = document.createElement("span"); orb.className = "ai-orb"; orb.textContent = "✦";
+  const label = document.createElement("div"); label.innerHTML = "<strong>ИИ-обзор</strong><small>Ответ помощника X.ai</small>";
+  meta.append(orb, label);
+  const answer = document.createElement("div"); answer.className = "ai-answer"; answer.textContent = response.reply;
+  const note = document.createElement("small"); note.className = "ai-note"; note.textContent = "ИИ может ошибаться. Проверяйте важные факты.";
+  list.append(meta, answer, note);
+  tab.aiLoadedFor = tab.query;
 }
 
 function renderSites() {
@@ -181,7 +367,7 @@ function renderSites() {
     label.querySelector("b").textContent = name;
     label.querySelector("small").textContent = detail;
     button.append(mark, label);
-    button.onclick = () => openAddress(url);
+    button.onclick = () => url ? openAddress(url) : $("#searchInput").focus();
     holder.append(button);
   });
   const add = document.createElement("button");
@@ -224,6 +410,7 @@ function toggleOverview(force) {
   overviewOpen = force ?? !overviewOpen;
   if (overviewOpen) {
     $("#homeView").hidden = true;
+    $("#searchResultsView").hidden = true;
     for (const tab of tabs) if (tab.view) tab.view.style.display = "none";
     renderOverview();
     $("#tabOverview").classList.add("visible");
@@ -248,13 +435,34 @@ function applyPreferences() {
 $("#searchForm").addEventListener("submit", event => {
   event.preventDefault();
   const value = $("#searchInput").value.trim();
-  if (value) openAddress(value);
+  if (value) homeSearchMode === "ai" ? openSearch(value, undefined, "ai") : openAddress(value);
   $("#searchInput").value = "";
 });
 $("#addressForm").addEventListener("submit", event => {
   event.preventDefault();
   openAddress($("#address").value);
 });
+$("#resultsSearchForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const value = $("#resultsQuery").value.trim();
+  if (value) openSearch(value, undefined, tabs.find(tab => tab.id === activeId)?.searchMode || "web");
+});
+$("#homeWebMode").onclick = () => {
+  homeSearchMode = "web";
+  $("#homeWebMode").classList.add("active"); $("#homeAiMode").classList.remove("active");
+};
+$("#homeAiMode").onclick = () => {
+  homeSearchMode = "ai";
+  $("#homeAiMode").classList.add("active"); $("#homeWebMode").classList.remove("active");
+};
+$("#resultsWebMode").onclick = () => {
+  const tab = tabs.find(item => item.id === activeId); if (!tab) return;
+  tab.searchMode = "web"; tab.searchLoadedFor = ""; updateSearchMode(tab); loadSearchResults(tab);
+};
+$("#resultsAiMode").onclick = () => {
+  const tab = tabs.find(item => item.id === activeId); if (!tab) return;
+  tab.searchMode = "ai"; tab.aiLoadedFor = ""; updateSearchMode(tab); loadAiOverview(tab);
+};
 $("#address").addEventListener("focus", event => event.target.select());
 $("#addTab").onclick = () => createTab();
 $("#home").onclick = () => {
@@ -262,13 +470,22 @@ $("#home").onclick = () => {
   if (!tab) return;
   destroyView(tab);
   tab.url = "";
+  tab.kind = "home";
+  tab.query = "";
   tab.title = "Новая вкладка";
   activateTab(tab.id);
   $("#searchInput").focus();
 };
 $("#back").onclick = () => { const tab = tabs.find(item => item.id === activeId); if (tab?.view?.canGoBack()) tab.view.goBack(); };
 $("#forward").onclick = () => { const tab = tabs.find(item => item.id === activeId); if (tab?.view?.canGoForward()) tab.view.goForward(); };
-$("#reload").onclick = () => { const tab = tabs.find(item => item.id === activeId); if (tab?.view) tab.view.reload(); else showToast("Это новая вкладка"); };
+$("#reload").onclick = () => {
+  const tab = tabs.find(item => item.id === activeId);
+  if (tab?.view) tab.view.reload();
+  else if (tab?.kind === "search") {
+    if (tab.searchMode === "ai") { tab.aiLoadedFor = ""; tab.aiLoading = false; loadAiOverview(tab); }
+    else { tab.searchLoadedFor = ""; tab.searchLoading = false; loadSearchResults(tab); }
+  } else showToast("Это новая вкладка");
+};
 $("#overviewBtn").onclick = () => toggleOverview();
 $("#minimize").onclick = () => window.xBrowser.minimize();
 $("#maximize").onclick = () => window.xBrowser.maximize();
@@ -294,9 +511,29 @@ $("#showQuick").onchange = event => { preferences.showQuick = event.target.check
 settingsDialog.addEventListener("click", event => { if (event.target === settingsDialog) settingsDialog.close(); });
 window.xBrowser.onOpenPopup(url => { const tab = createTab(); openAddress(url, tab); });
 
+function restoreSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("xb-tabs-session") || "[]");
+    if (Array.isArray(saved)) {
+      tabs = saved.slice(-20).map(item => ({
+        id: typeof item.id === "string" ? item.id : crypto.randomUUID(),
+        title: typeof item.title === "string" ? item.title : "Новая вкладка",
+        url: typeof item.url === "string" && (/^https?:\/\//i.test(item.url) || item.url.startsWith("x-browser://search/")) ? item.url : "",
+        kind: item.kind === "search" || item.url?.startsWith("x-browser://search/") ? "search" : item.url ? "web" : "home",
+        searchMode: item.searchMode === "ai" ? "ai" : "web",
+        query: typeof item.query === "string" ? item.query : item.url?.startsWith("x-browser://search/") ? new URL(item.url).searchParams.get("q") || "" : "",
+        view: null,
+      }));
+    }
+  } catch { tabs = []; }
+  if (!tabs.length) return createTab();
+  const active = tabs.find(item => item.id === localStorage.getItem("xb-active-tab")) || tabs[0];
+  activateTab(active.id);
+}
+
 const hour = new Date().getHours();
 $("#greeting").textContent = hour < 5 ? "Доброй ночи. Куда отправимся?" : hour < 12 ? "Доброе утро. Куда отправимся?" : hour < 18 ? "Куда отправимся?" : "Добрый вечер. Куда отправимся?";
 renderSites();
 updateRecent();
 applyPreferences();
-createTab();
+restoreSession();

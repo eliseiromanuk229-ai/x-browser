@@ -1,6 +1,6 @@
 # X Browser
 
-X Browser is an early, open-source Windows browser shell built with Electron and Chromium. It has a dark start page, multiple tabs, a tab overview, bookmarks, local history, quick links, and configurable toolbar and tab placement.
+X Browser is an early, open-source desktop browser shell built with Electron and Chromium. It has a dark start page, multiple tabs, a tab overview, bookmarks, local history, quick links, and configurable toolbar and tab placement.
 
 ## Public project
 
@@ -11,7 +11,8 @@ X Browser is an early, open-source Windows browser shell built with Electron and
 
 ## Status
 
-- Windows x64 desktop prototype. No Android or iPhone release yet.
+- Windows x64 desktop prototype; a Linux x64 packaging command and CI build are configured.
+- No public installer is currently released. Android and iPhone need separate native app projects; Electron does not package apps for those platforms.
 - Current desktop executable is unsigned. It is not a SignPath Foundation release.
 - No X Browser account, cloud sync, or external identity-provider login is implemented yet.
 - There is no public desktop release download yet.
